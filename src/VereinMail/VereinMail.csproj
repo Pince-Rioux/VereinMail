@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>VereinMail</PackageId>
+    <Title>VereinMail</Title>
+    <Version>1.0.0-dev</Version>
+    <Authors>axuno gGmbH and Contributors</Authors>
+    <Description>Independent email transport library for the ClubSite ecosystem. Provides IEmailSender interface with File (.eml), SMTP, and log-only implementations. Consumed by VereinMember and, in a future refactoring, by ClubSite directly.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>volleyballclub;club-management;email</PackageTags>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MailKit" Version="4.17.0" />
+  </ItemGroup>
+
+</Project>
