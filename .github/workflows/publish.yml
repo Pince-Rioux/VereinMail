@@ -46,3 +46,32 @@ jobs:
             -s "$REGISTRY" \
             -k "$GH_PAT" \
             --skip-duplicate
+      - name: Configure GitHub NuGet source
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+      
+          dotnet nuget remove source github || true
+      
+          dotnet nuget add source \
+            "https://nuget.pkg.github.com/${GH_OWNER}/index.json" \
+            --name github \
+            --username "${GITHUB_ACTOR}" \
+            --password "${GH_TOKEN}" \
+            --store-password-in-clear-text
+      
+      - name: Publish NuGet package
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+      
+          dotnet nuget push \
+            "src/VereinMail/bin/Release/VereinMail.1.0.0-dev.nupkg" \
+            --source github \
+            --api-key "${GH_TOKEN}" \
+            --skip-duplicate
