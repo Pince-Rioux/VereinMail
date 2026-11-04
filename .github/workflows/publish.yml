@@ -15,7 +15,6 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0
@@ -37,13 +36,11 @@ jobs:
           GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           set -euo pipefail
-          REGISTRY="https://nuget.pkg.github.com/Pince-Rioux/index.json"
-          dotnet nuget add source "$REGISTRY" \
-            -n github \
-            -u 'Pince-Rioux' \
-            -p "$GH_PAT" \
-            --store-password-in-clear-text || true
+          REGISTRY="https://nuget.pkg.github.com/Pince-Rioux"
           nupkg=$(find src -name '*.nupkg' -print -quit)
           [ -n "$nupkg" ] || { echo "::error::no nupkg"; exit 1; }
           echo "package: $nupkg"
-          dotnet nuget push "$nupkg" -s "github"
+          dotnet nuget push "$nupkg" \
+            -s "$REGISTRY" \
+            -k "$GH_PAT" \
+            --skip-duplicate
