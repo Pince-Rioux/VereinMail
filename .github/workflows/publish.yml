@@ -33,15 +33,17 @@ jobs:
         env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          nupkg=$(ls src/VereinMail/obj/Release/*.nupkg 2>/dev/null | head -1)
-          if [ -z "$nupkg" ]; then
-            nupkg=$(ls src/VereinMail/bin/Release/*.nupkg 2>/dev/null | head -1)
-          fi
+          # Configure NuGet source with GITHUB_TOKEN (has write:packages scope)
+          dotnet nuget source add \
+            "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
+            --name github \
+            --username "${{ github.actor }}" \
+            --password "${{ secrets.GITHUB_TOKEN }}"
+          # Locate and push the package
+          nupkg=$(find src -name '*.nupkg' 2>/dev/null | head -1)
           if [ -z "$nupkg" ]; then
             echo "No .nupkg found" >&2
             exit 1
           fi
           echo "Publishing: $nupkg"
-          dotnet nuget push "$nupkg" \
-            --source "https://nuget.pkg.github.com/${{ github.repository_owner }}" \
-            --api-key "$GITHUB_TOKEN"
+          dotnet nuget push "$nupkg" --source github
