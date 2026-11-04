@@ -4,7 +4,7 @@
 
 VereinMail provides a clean `IEmailSender` interface and three ready-to-use implementations — **File** (`.eml` for development), **SMTP** (production), and **Log** (safe fallback). It follows the dependency-inversion principle: consumers depend only on the interface; wiring the transport is the application's job.
 
-It was extracted from the [VereinMember](https://github.com/Pince-Rioux/VereinMember) membership module and is designed to be reused by any .NET project in the ClubSite ecosystem (and beyond).
+The library is framework-agnostic in design and can be used in any .NET application.
 
 ---
 
@@ -27,9 +27,8 @@ It was extracted from the [VereinMember](https://github.com/Pince-Rioux/VereinMe
 - **`FileEmailSender`** — writes MIME-compliant `.eml` files for development and testing. No real delivery.
 - **`SmtpEmailSender`** — full SMTP delivery with optional authentication, STARTTLS, and configurable timeouts.
 - **`LogOnlyEmailSender`** — fail-safe fallback that logs every send request as a warning without delivering.
-- **Configuration-driven** — `MailOptions` bound from the application config (e.g., `MembershipMail` section). No hardcoded settings.
+- **Configuration-driven** — `MailOptions` bound from the application config. No hardcoded settings.
 - **Zero static state** — all implementations are injectable and testable.
-- **No assumptions about callers** — the interface carries no club- or membership-specific types.
 
 ---
 
@@ -90,38 +89,36 @@ Or add it to your `.csproj`:
 </ItemGroup>
 ```
 
-> **Note:** The package is currently published to the `LocalPackages` source. See the [publishing guide](PUBLISHING.md) for GitHub Packages setup.
-
 ---
 
 ## Configuration
 
-All settings are defined in `MailOptions` and bound from a configuration section — typically `MembershipMail` in an `AppSettings.json` file.
+All settings are defined in `MailOptions` and bound from a configuration section of your application — for example `Mail` or `MembershipMail` in an `AppSettings.json` file.
 
 | Section | Key | Type | Default | Description |
 |---|---|---|---|---|
-| `MembershipMail` | `Mode` | string | `"Log"` | Transport: `"File"`, `"Smtp"`, or `"Log"` |
-| `MembershipMail.DefaultFrom` | `Name` | string | `"VereinMail"` | Display name for the sender |
-| `MembershipMail.DefaultFrom` | `Email` | string | `"noreply@localhost"` | Sender email address |
-| `MembershipMail` | `Organization` | string | *(none)* | Optional `Organization` MIME header |
-| `MembershipMail.File` | `Path` | string | `"maildrop"` | Directory for `.eml` files (absolute or relative to content root) |
-| `MembershipMail.Smtp` | `Server` | string | `""` | SMTP hostname |
-| `MembershipMail.Smtp` | `Port` | int | `587` | SMTP port |
-| `MembershipMail.Smtp` | `Username` | string | `""` | SMTP login (optional) |
-| `MembershipMail.Smtp` | `Password` | string | `""` | SMTP password (optional) |
-| `MembershipMail.Smtp` | `Timeout` | int | `30` | Connection timeout in seconds |
+| `{YourSection}` | `Mode` | string | `"Log"` | Transport: `"File"`, `"Smtp"`, or `"Log"` |
+| `{YourSection}.DefaultFrom` | `Name` | string | `"VereinMail"` | Display name for the sender |
+| `{YourSection}.DefaultFrom` | `Email` | string | `"noreply@localhost"` | Sender email address |
+| `{YourSection}` | `Organization` | string | *(none)* | Optional `Organization` MIME header |
+| `{YourSection}.File` | `Path` | string | `"maildrop"` | Directory for `.eml` files (absolute or relative to content root) |
+| `{YourSection}.Smtp` | `Server` | string | `""` | SMTP hostname |
+| `{YourSection}.Smtp` | `Port` | int | `587` | SMTP port |
+| `{YourSection}.Smtp` | `Username` | string | `""` | SMTP login (optional) |
+| `{YourSection}.Smtp` | `Password` | string | `""` | SMTP password (optional) |
+| `{YourSection}.Smtp` | `Timeout` | int | `30` | Connection timeout in seconds |
 
 ### Example configuration
 
 ```json
 {
-  "MembershipMail": {
+  "Mail": {
     "Mode": "Smtp",
     "DefaultFrom": {
-      "Name": "VC Neusäß Mitgliederverwaltung",
-      "Email": "mitglied@volleyballclub.de"
+      "Name": "Your App Mailer",
+      "Email": "noreply@yourdomain.org"
     },
-    "Organization": "Volleyballclub Neusäß e.V.",
+    "Organization": "Your Organization e.V.",
     "Smtp": {
       "Server": "smtp.example.com",
       "Port": 587,
@@ -141,10 +138,8 @@ All settings are defined in `MailOptions` and bound from a configuration section
 The library does not auto-register. Your application's startup code picks the transport based on the configuration mode:
 
 ```csharp
-// WebAppStartup.cs — or equivalent
-services.Configure<MembershipMailOptions>(configuration);
-
-var mailOptions = configuration.GetValue<MailOptions>("MembershipMail");
+// Application startup — e.g., your WebAppStartup class
+var mailOptions = configuration.GetValue<MailOptions>("Mail");
 IEmailSender mailSender;
 
 switch (mailOptions.Mode.ToLower())
@@ -173,21 +168,21 @@ services.AddSingleton<IEmailSender>(mailSender);
 
 ```csharp
 // Any service that depends on IEmailSender
-public class MembershipService
+public class NotificationService
 {
     private readonly IEmailSender _mailSender;
 
-    public MembershipService(IEmailSender mailSender)
+    public NotificationService(IEmailSender mailSender)
     {
         _mailSender = mailSender;
     }
 
-    public async Task NotifyMember(string email, string name)
+    public async Task SendWelcome(string email, string name)
     {
         await _mailSender.SendAsync(
             email,
-            "Willkommen bei VC Neusäß",
-            $"Hallo {name},\n\nwillkommen im Verein!\n\nMit sportlichen Grüßen\nDein VC Neusäß"
+            "Welcome to YourApp",
+            $"Hello {name},\n\nwelcome aboard!\n\nBest regards\nThe YourApp Team"
         );
     }
 }
@@ -210,7 +205,7 @@ dotnet pack --configuration Release
 ```
 
 **Requirements:**
-- .NET SDK 8.0+ (or whatever `TargetFramework` is set to)
+- .NET SDK 8.0+
 - NuGet dependencies resolved (run `dotnet restore` if needed)
 
 ---
@@ -237,6 +232,6 @@ VereinMail/
 
 ## License
 
-MIT — see [LICENSE](LICENSE). 
+MIT — see [LICENSE](LICENSE).
 
-VereinMail is developed for the ClubSite ecosystem of VC Neusäß, but is intentionally decoupled and reusable by any .NET project.
+VereinMail is an independent, reusable email transport library for .NET applications.
