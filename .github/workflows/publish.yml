@@ -13,7 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
     steps:
       - uses: actions/checkout@v4
 
@@ -38,15 +37,13 @@ jobs:
           GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           set -euo pipefail
-          REGISTRY="https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
-          echo "registry: $REGISTRY"
-          code=$(curl -s -o /dev/null -w '%{http_code}' \
-            -H "Authorization: Bearer *** secrets.GH_PAT }}" "$REGISTRY")
-          echo "registry index status: $code"
+          REGISTRY="https://nuget.pkg.github.com/Pince-Rioux/index.json"
+          dotnet nuget add source "$REGISTRY" \
+            -n github \
+            -u 'Pince-Rioux' \
+            -p "$GH_PAT" \
+            --store-password-in-clear-text || true
           nupkg=$(find src -name '*.nupkg' -print -quit)
           [ -n "$nupkg" ] || { echo "::error::no nupkg"; exit 1; }
           echo "package: $nupkg"
-          dotnet nuget push "$nupkg" \
-            -s "$REGISTRY" \
-            -k "$GH_PAT" \
-            --skip-duplicate
+          dotnet nuget push "$nupkg" -s "github"
