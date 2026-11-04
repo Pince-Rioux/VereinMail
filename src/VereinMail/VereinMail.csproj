@@ -3,7 +3,7 @@
   <PropertyGroup>
     <PackageId>VereinMail</PackageId>
     <Title>VereinMail</Title>
-    <Version>1.0.0-dev</Version>
+    <Version>1.0.1-dev</Version>
     <Authors>axuno gGmbH and Contributors</Authors>
     <Description>Independent email transport library for the ClubSite ecosystem. Provides IEmailSender interface with File (.eml), SMTP, and log-only implementations. Consumed by VereinMember and, in a future refactoring, by ClubSite directly.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
