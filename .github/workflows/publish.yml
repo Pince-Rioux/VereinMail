@@ -30,6 +30,8 @@ jobs:
         working-directory: src/VereinMail
 
       - name: Publish to GitHub Packages
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           nupkg=$(ls src/VereinMail/obj/Release/*.nupkg 2>/dev/null | head -1)
           if [ -z "$nupkg" ]; then
@@ -42,4 +44,4 @@ jobs:
           echo "Publishing: $nupkg"
           dotnet nuget push "$nupkg" \
             --source "https://nuget.pkg.github.com/${{ github.repository_owner }}" \
-            --api-key "${{ secrets.GITHUB_TOKEN }}"
+            --api-key "$GITHUB_TOKEN"
