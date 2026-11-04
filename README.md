@@ -55,7 +55,7 @@ The library is framework-agnostic in design and can be used in any .NET applicat
 **Dependencies:**
 
 - **Framework:** `Microsoft.AspNetCore.App` (for `IWebHostEnvironment`, `ILogger`, `IOptions`)
-- **MIME & SMTP:** [MailKit](https://www.nuget.org/packages/MailKit) 4.17+ (from the [JakMail](https://github.com/jakmackie/JakMail) ecosystem)
+- **MIME & SMTP:** [MailKit](https://www.nuget.org/packages/MailKit) 4.17+ ([GitHub](https://github.com/jstedfast/MailKit) · [MimeKit](http://www.mimekit.net/))
 
 ---
 
