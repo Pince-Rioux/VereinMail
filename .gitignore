@@ -1,0 +1,33 @@
+# NuGet packages
+*.nupkg
+
+# Build output
+bin/
+obj/
+*.dll
+*.pdb
+*.exe
+*.deps.json
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+
+# Generated
+*.generated.*
+*.AssemblyInfo.cs
