@@ -20,11 +20,11 @@ jobs:
           dotnet-version: 8.0
 
       - name: Build package
+        working-directory: src/VereinMail
         run: |
           dotnet restore
           dotnet build --no-restore
           dotnet pack --no-restore
-        working-directory: src/VereinMail
 
       - name: Publish to GitHub Packages
         env:
@@ -35,14 +35,7 @@ jobs:
           nupkg=$(find src -name '*.nupkg' -print -quit)
           [ -n "$nupkg" ] || { echo "::error::no nupkg"; exit 1; }
           echo "package: $nupkg"
-          HTTP_CODE=$(curl -s -o /tmp/push-response.json -w '%{http_code}' \
-            -H "Authorization: Bearer ***" \
-            -H "Content-Type: application/octet-stream" \
-            --data-binary "@$nupkg" \
-            "$SRC/")
-          echo "HTTP $HTTP_CODE"
-          cat /tmp/push-response.json
-          [ "$HTTP_CODE" = "201" ] || [ "$HTTP_CODE" = "204" ] || {
-            echo "::error::push failed (HTTP $HTTP_CODE)"
-            exit 1
-          }
+          dotnet nuget push "$nupkg" \
+            -s "$SRC" \
+            -k "$GH_PAT" \
+            --skip-duplicate
