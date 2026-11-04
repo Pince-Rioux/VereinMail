@@ -31,7 +31,7 @@ jobs:
 
       - name: Publish to GitHub Packages
         env:
-          GH_PAT: *** secrets.GH_PAT }}
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           set -euo pipefail
           REGISTRY="https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
