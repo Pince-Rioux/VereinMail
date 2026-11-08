@@ -33,11 +33,12 @@ public class SmtpEmailSender : IEmailSender
 
         var message = BuildMessage(to, subject, body);
 
-        using var client = new SmtpClient
-        {
-            Timeout = smtp.Timeout > 0 ? smtp.Timeout * 1000 : 30_000,
-            ServerCertificateValidationCallback = (_, _, _, _) => true
-        };
+        var timeoutMs = smtp.Timeout > 0 ? smtp.Timeout * 1000 : 30_000;
+        var client = new SmtpClient { Timeout = timeoutMs };
+
+        // Only disable certificate validation if explicitly configured (insecure)
+        if (!smtp.VerifyServerCertificate)
+            client.ServerCertificateValidationCallback = (_, _, _, _) => true;
 
         await client.ConnectAsync(smtp.Server, smtp.Port, SecureSocketOptions.StartTlsWhenAvailable);
         if (!string.IsNullOrWhiteSpace(smtp.Username))
