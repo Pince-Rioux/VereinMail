@@ -21,7 +21,13 @@ Die Bibliothek entsorgt den SMTP-Client jetzt zuverlässig, besitzt eine echte x
 - `dotnet build src/VereinMail/VereinMail.csproj --no-restore`: **0 Warnungen, 0 Fehler**.
 - `dotnet test tests/VereinMail.Tests/VereinMail.Tests.csproj --no-restore`: **8 bestanden, 0 fehlgeschlagen** (3 Fakten + 4 Theory-Fälle + 1 SMTP-Konfigurationstest).
 - Kein echter SMTP-/TLS-Handshake, kein Versand und keine Zertifikatsfehler-Simulation ausgeführt.
-- CI-Lauf nach dem Push: siehe GitHub Actions; der Workflow ist auf Testausführung umgestellt.
+- CI-Lauf auf Branch `fix/ssl-validation-tests`: **erfolgreich** (Restore, Build und 8 Tests).
+
+## Branch-Status
+
+- Aktueller Branch: `fix/ssl-validation-tests`
+- Letzte Commits: `6a52113` (TLS/Test-Verbesserungen) und `19ef90c` (CI)
+- Kein offener Pull Request; ein PR gegen `main` kann bei Bedarf erstellt werden.
 
 ## Offene Probleme
 
