@@ -1,6 +1,24 @@
 namespace VereinMail;
 
 /// <summary>
+/// SMTP transport security mode.
+/// </summary>
+public enum SmtpSecurityMode
+{
+    /// <summary>Require STARTTLS; fail if the server does not offer it. Recommended.</summary>
+    StartTls,
+
+    /// <summary>Use STARTTLS if offered, otherwise continue in plaintext. Less secure.</summary>
+    StartTlsWhenAvailable,
+
+    /// <summary>Use implicit TLS (SMTPS), typically on port 465.</summary>
+    SslOnConnect,
+
+    /// <summary>Do not use TLS. Use only in isolated development environments.</summary>
+    None
+}
+
+/// <summary>
 /// Configuration for mail delivery.
 /// Bound from the <c>MembershipMail</c> configuration section.
 /// </summary>
@@ -41,7 +59,19 @@ public class MailOptions
         public int Port { get; set; } = 587;
         public string Username { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
+
+        /// <summary>
+        /// TLS mode. Defaults to <see cref="SmtpSecurityMode.StartTls"/> so that
+        /// production mail is never sent over a plaintext connection.
+        /// </summary>
+        public SmtpSecurityMode Security { get; set; } = SmtpSecurityMode.StartTls;
+
+        /// <summary>
+        /// Verify the SMTP server certificate. Keep this enabled outside isolated
+        /// development environments.
+        /// </summary>
         public bool VerifyServerCertificate { get; set; } = true;
+
         public int Timeout { get; set; } = 30;
     }
 }
