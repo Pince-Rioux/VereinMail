@@ -34,7 +34,7 @@ public class SmtpEmailSender : IEmailSender
         var message = BuildMessage(to, subject, body);
 
         var timeoutMs = smtp.Timeout > 0 ? smtp.Timeout * 1000 : 30_000;
-        var client = new SmtpClient { Timeout = timeoutMs };
+        using var client = new SmtpClient { Timeout = timeoutMs };
 
         // Only disable certificate validation if explicitly configured (insecure)
         if (!smtp.VerifyServerCertificate)

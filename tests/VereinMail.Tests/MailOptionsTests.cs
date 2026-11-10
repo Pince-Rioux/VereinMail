@@ -45,7 +45,7 @@ public class MailOptionsTests
     /// <summary>Simple assertion helper.</summary>
     private void AssertEqual(string message, object expected, object actual)
     {
-        if (expected != actual)
+        if (!object.Equals(expected, actual))
             throw new Exception($"{message}: expected '{expected}', got '{actual}'");
     }
 }
