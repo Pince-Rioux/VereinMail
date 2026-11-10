@@ -1,51 +1,56 @@
-using System.Threading.Tasks;
-using System;
 using VereinMail;
+using Xunit;
+
+namespace VereinMail.Tests;
 
 /// <summary>
-/// Tests for MailOptions configuration model.
+/// Tests for the MailOptions configuration model.
 /// </summary>
 public class MailOptionsTests
 {
-    /// <summary>
-    /// Tests that default values are set correctly.
-    /// </summary>
+    [Fact]
     public void Defaults_Are_Correct()
     {
         var options = new MailOptions();
-        AssertEqual("Mode should default to Log", "Log", options.Mode);
-        AssertEqual("SMTP Port should default to 587", 587, options.Smtp.Port);
-        AssertEqual("VerifyServerCertificate should default to true", true, options.Smtp.VerifyServerCertificate);
-        AssertEqual("Timeout should default to 30s", 30, options.Smtp.Timeout);
-        AssertEqual("File.Path should default to empty string", string.Empty, options.File.Path);
-        AssertEqual("DefaultFrom.Name should default to empty", string.Empty, options.DefaultFrom.Name);
-        AssertEqual("DefaultFrom.Email should default to empty", string.Empty, options.DefaultFrom.Email);
+
+        Assert.Equal("Log", options.Mode);
+        Assert.Equal(587, options.Smtp.Port);
+        Assert.Equal(SmtpSecurityMode.StartTls, options.Smtp.Security);
+        Assert.True(options.Smtp.VerifyServerCertificate);
+        Assert.Equal(30, options.Smtp.Timeout);
+        Assert.Equal(string.Empty, options.File.Path);
+        Assert.Equal(string.Empty, options.DefaultFrom.Name);
+        Assert.Equal(string.Empty, options.DefaultFrom.Email);
     }
 
-    /// <summary>
-    /// Tests that VerifyServerCertificate can be explicitly set to false.
-    /// </summary>
+    [Fact]
     public void VerifyServerCertificate_Can_Be_Disabled()
     {
-        var smtp = new MailOptions.SmtpMailOptions();
-        smtp.VerifyServerCertificate = false;
-        AssertEqual("VerifyServerCertificate should be false", false, smtp.VerifyServerCertificate);
+        var smtp = new MailOptions.SmtpMailOptions
+        {
+            VerifyServerCertificate = false
+        };
+
+        Assert.False(smtp.VerifyServerCertificate);
     }
 
-    /// <summary>
-    /// Tests that Mode can be set to Smtp.
-    /// </summary>
+    [Fact]
     public void Mode_Can_Be_Smtp()
     {
-        var options = new MailOptions();
-        options.Mode = "Smtp";
-        AssertEqual("Mode should be Smtp", "Smtp", options.Mode);
+        var options = new MailOptions { Mode = "Smtp" };
+
+        Assert.Equal("Smtp", options.Mode);
     }
 
-    /// <summary>Simple assertion helper.</summary>
-    private void AssertEqual(string message, object expected, object actual)
+    [Theory]
+    [InlineData(SmtpSecurityMode.StartTls)]
+    [InlineData(SmtpSecurityMode.StartTlsWhenAvailable)]
+    [InlineData(SmtpSecurityMode.SslOnConnect)]
+    [InlineData(SmtpSecurityMode.None)]
+    public void Security_Can_Be_Configured(SmtpSecurityMode mode)
     {
-        if (expected != actual)
-            throw new Exception($"{message}: expected '{expected}', got '{actual}'");
+        var smtp = new MailOptions.SmtpMailOptions { Security = mode };
+
+        Assert.Equal(mode, smtp.Security);
     }
 }

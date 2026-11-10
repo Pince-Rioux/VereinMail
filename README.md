@@ -25,7 +25,7 @@ The library is framework-agnostic in design and can be used in any .NET applicat
 
 - **`IEmailSender` interface** — single-method contract: `SendAsync(to, subject, body)`.
 - **`FileEmailSender`** — writes MIME-compliant `.eml` files for development and testing. No real delivery.
-- **`SmtpEmailSender`** — full SMTP delivery with optional authentication, STARTTLS, and configurable timeouts.
+- **`SmtpEmailSender`** — full SMTP delivery with optional authentication, configurable TLS mode, certificate validation, and timeouts.
 - **`LogOnlyEmailSender`** — fail-safe fallback that logs every send request as a warning without delivering.
 - **Configuration-driven** — `MailOptions` bound from the application config. No hardcoded settings.
 - **Zero static state** — all implementations are injectable and testable.
@@ -106,7 +106,11 @@ All settings are defined in `MailOptions` and bound from a configuration section
 | `{YourSection}.Smtp` | `Port` | int | `587` | SMTP port |
 | `{YourSection}.Smtp` | `Username` | string | `""` | SMTP login (optional) |
 | `{YourSection}.Smtp` | `Password` | string | `""` | SMTP password (optional) |
+| `{YourSection}.Smtp` | `Security` | string | `"StartTls"` | TLS mode: `StartTls` (required), `StartTlsWhenAvailable`, `SslOnConnect`, or `None` |
+| `{YourSection}.Smtp` | `VerifyServerCertificate` | bool | `true` | Verify the SMTP server certificate. Disable only in isolated development environments. |
 | `{YourSection}.Smtp` | `Timeout` | int | `30` | Connection timeout in seconds |
+
+> **TLS default:** `Security` defaults to `StartTls`, so the sender fails instead of silently falling back to plaintext. For legacy servers that only support opportunistic STARTTLS, set `Security` to `StartTlsWhenAvailable`. `SslOnConnect` is for implicit TLS (usually port 465); `None` is intended only for isolated development environments.
 
 ### Example configuration
 
@@ -123,7 +127,9 @@ All settings are defined in `MailOptions` and bound from a configuration section
       "Server": "smtp.example.com",
       "Port": 587,
       "Username": "smtp-user",
-      "Password": "smtp-password"
+      "Password": "smtp-password",
+      "Security": "StartTls",
+      "VerifyServerCertificate": true
     }
   }
 }
