@@ -40,11 +40,11 @@ The library targets .NET 8 and does not require the ASP.NET Core shared framewor
 ├──────────────────────┤
 │   SendAsync(to,      │
 │     subject, body)   │
-└────────┬─────────────┘
-         │ implements
-    ┌────┼──────────────────────┐
-    │    │                      │
-    ▼    ▼                      ▼
+└──────────────┬───────┘
+               │ implements
+    ┌──────────┼──────────────────────┐
+    │          │                      │
+    ▼          ▼                      ▼
 ┌──────────┐  ┌──────────────┐  ┌────────────────┐
 │ File     │  │ Smtp         │  │ LogOnly        │
 │ .eml     │  │ SMTP+STARTTLS│  │ Logger.Warning │
