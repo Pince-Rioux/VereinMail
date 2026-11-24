@@ -10,12 +10,18 @@ obj/
 *.deps.json
 
 # IDE
+.vs/
 .idea/
 *.iml
 .vscode/
+*.user
+*.suo
 *.swp
 *.swo
 *~
+
+# Test results
+TestResults/
 
 # OS
 .DS_Store

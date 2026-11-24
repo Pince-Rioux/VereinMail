@@ -199,19 +199,22 @@ public class NotificationService
 ## Building
 
 ```bash
-# Build the library
-cd src/VereinMail
-dotnet build
+# Restore and build the complete solution
+dotnet restore VereinMail.slnx
+dotnet build VereinMail.slnx --no-restore
 
 # Build in release mode
-dotnet build --configuration Release
+dotnet build VereinMail.slnx --configuration Release
+
+# Run all tests
+dotnet test VereinMail.slnx --configuration Release
 
 # Create a NuGet package
-dotnet pack --configuration Release
+dotnet pack src/VereinMail/VereinMail.csproj --configuration Release
 ```
 
 **Requirements:**
-- .NET SDK 8.0+
+- .NET SDK 10.0+ for the standard `.slnx` build (the projects themselves still target .NET 8)
 - NuGet dependencies resolved (run `dotnet restore` if needed)
 
 ---
@@ -220,18 +223,24 @@ dotnet pack --configuration Release
 
 ```
 VereinMail/
+├── VereinMail.slnx          # Solution with library and tests
+├── .editorconfig           # Shared C# formatting rules
+├── .gitattributes          # Line-ending and diff configuration
 ├── README.md
 ├── LICENSE
 ├── CONTRIBUTING.md
 ├── .gitignore
-└── src/
-    └── VereinMail/
-        ├── VereinMail.csproj    # Build configuration
-        ├── IEmailSender.cs      # Interface (the contract)
-        ├── FileEmailSender.cs   # .eml file transport (dev)
-        ├── SmtpEmailSender.cs   # SMTP transport (production)
-        ├── LogOnlyEmailSender.cs# Fallback transport (safe default)
-        └── MailOptions.cs       # Configuration model
+├── src/
+│   └── VereinMail/
+│       ├── VereinMail.csproj    # Build configuration
+│       ├── IEmailSender.cs      # Interface (the contract)
+│       ├── FileEmailSender.cs   # .eml file transport (dev)
+│       ├── SmtpEmailSender.cs   # SMTP transport (production)
+│       ├── LogOnlyEmailSender.cs# Fallback transport (safe default)
+│       └── MailOptions.cs       # Configuration model
+└── tests/
+    └── VereinMail.Tests/
+        └── VereinMail.Tests.csproj
 ```
 
 ---

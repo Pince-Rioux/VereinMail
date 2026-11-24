@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="src/VereinMail/VereinMail.csproj" />
+  <Project Path="tests/VereinMail.Tests/VereinMail.Tests.csproj" />
+</Solution>

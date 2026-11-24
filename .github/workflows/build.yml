@@ -19,13 +19,13 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 10.0.x
 
       - name: Restore
-        run: dotnet restore tests/VereinMail.Tests/VereinMail.Tests.csproj
+        run: dotnet restore VereinMail.slnx --verbosity minimal
 
       - name: Build
-        run: dotnet build src/VereinMail/VereinMail.csproj --no-restore --configuration Release
+        run: dotnet build VereinMail.slnx --no-restore --configuration Release --verbosity minimal
 
       - name: Test
-        run: dotnet test tests/VereinMail.Tests/VereinMail.Tests.csproj --no-restore --configuration Release --logger "console;verbosity=normal"
+        run: dotnet test VereinMail.slnx --no-build --configuration Release --logger "console;verbosity=minimal"

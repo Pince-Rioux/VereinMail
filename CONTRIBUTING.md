@@ -21,9 +21,10 @@ If your feature fits outside this scope, consider a downstream project (e.g., Ve
    git checkout -b feature/your-feature-name
    ```
 3. Make your changes.
-4. Ensure the library still builds:
+4. Ensure the complete solution still builds and all tests pass:
    ```
-   dotnet build
+   dotnet build VereinMail.slnx
+   dotnet test VereinMail.slnx
    ```
 
 ## Pull Request Guidelines
@@ -31,7 +32,7 @@ If your feature fits outside this scope, consider a downstream project (e.g., Ve
 - Keep changes minimal and focused on one concern.
 - Use the same coding style as the existing code (nullable enabled, implicit usings, .NET naming conventions).
 - Add or update documentation in `README.md` if the public API changes.
-- Verify that `dotnet build` succeeds with 0 errors and 0 warnings.
+- Verify that `dotnet build VereinMail.slnx` succeeds with 0 errors and 0 warnings and that all tests pass.
 - Use a descriptive commit message (imperative mood, <= 72 chars title, body with motivation if needed).
 
 ## Code of Conduct
