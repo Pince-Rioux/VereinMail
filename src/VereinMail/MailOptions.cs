@@ -20,14 +20,14 @@ public enum SmtpSecurityMode
 
 /// <summary>
 /// Configuration for mail delivery.
-/// Bound from the <c>MembershipMail</c> configuration section.
+/// Bind from the application configuration section of your choice.
 /// </summary>
 public class MailOptions
 {
     /// <summary>Delivery mode: <c>File</c>, <c>Smtp</c>, <c>Log</c>.</summary>
     public string Mode { get; set; } = "Log";
 
-    /// <summary>Sender address used for all module emails.</summary>
+    /// <summary>Sender address used for outgoing email.</summary>
     public MailAddressOptions DefaultFrom { get; set; } = new();
 
     /// <summary>Optional organization header.</summary>
@@ -72,6 +72,10 @@ public class MailOptions
         /// </summary>
         public bool VerifyServerCertificate { get; set; } = true;
 
+        /// <summary>Permit plaintext delivery or disabled certificate checks in isolated development only.</summary>
+        public bool AllowInsecure { get; set; }
+
+        /// <summary>SMTP socket timeout in seconds (positive and representable in milliseconds).</summary>
         public int Timeout { get; set; } = 30;
     }
 }

@@ -16,12 +16,15 @@ public class LogOnlyEmailSender : IEmailSender
         _logger = logger;
     }
 
-    public Task SendAsync(string to, string subject, string body)
-    {
-        _logger.LogWarning(
-            "Mail NOT delivered (Mode is not File or Smtp). To: {To} | Subject: {Subject}",
-            to, subject);
+    public Task SendAsync(string to, string subject, string body) =>
+        SendAsync(to, subject, body, CancellationToken.None);
 
+    public Task SendAsync(string to, string subject, string body, CancellationToken cancellationToken)
+    {
+        if (cancellationToken.IsCancellationRequested)
+            return Task.FromCanceled(cancellationToken);
+
+        _logger.LogWarning("Mail not delivered: the log-only transport is active.");
         return Task.CompletedTask;
     }
 }
