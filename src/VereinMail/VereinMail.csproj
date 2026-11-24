@@ -5,14 +5,23 @@
     <Title>VereinMail</Title>
     <Version>1.0.1-dev</Version>
     <Authors>axuno gGmbH and Contributors</Authors>
-    <Description>Independent email transport library for the ClubSite ecosystem. Provides IEmailSender interface with File (.eml), SMTP, and log-only implementations. Consumed by VereinMember and, in a future refactoring, by ClubSite directly.</Description>
+    <Description>Plain-text email transport for .NET 8 and later, with SMTP, development .eml files, and a log-only fallback.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageTags>volleyballclub;club-management;email</PackageTags>
+    <PackageTags>email;smtp;mail</PackageTags>
+    <PackageProjectUrl>https://github.com/Pince-Rioux/VereinMail</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Pince-Rioux/VereinMail.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>Requires STARTTLS by default. Insecure SMTP settings now require explicit opt-in. FileEmailSender takes IHostEnvironment instead of IWebHostEnvironment. See the packaged README for migration details.</PackageReleaseNotes>
     <TargetFramework>net8.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
