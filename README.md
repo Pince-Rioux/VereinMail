@@ -98,8 +98,8 @@ All settings are defined in `MailOptions` and bound from a configuration section
 | Section | Key | Type | Default | Description |
 |---|---|---|---|---|
 | `{YourSection}` | `Mode` | string | `"Log"` | Transport: `"File"`, `"Smtp"`, or `"Log"` |
-| `{YourSection}.DefaultFrom` | `Name` | string | `""` | Display name for the sender |
-| `{YourSection}.DefaultFrom` | `Email` | string | `""` | Sender email address |
+| `{YourSection}.DefaultFrom` | `Name` | string | `"VereinMail"` | Display name for the sender |
+| `{YourSection}.DefaultFrom` | `Email` | string | `"noreply@localhost"` | Sender email address |
 | `{YourSection}` | `Organization` | string | *(none)* | Optional `Organization` MIME header |
 | `{YourSection}.File` | `Path` | string | `"maildrop"` | Directory for `.eml` files (absolute or relative to content root) |
 | `{YourSection}.Smtp` | `Server` | string | `""` | SMTP hostname |
