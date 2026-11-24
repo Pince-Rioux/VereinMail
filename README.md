@@ -4,7 +4,7 @@
 
 VereinMail provides a clean `IEmailSender` interface and three ready-to-use implementations — **File** (`.eml` for development), **SMTP** (production), and **Log** (safe fallback). It follows the dependency-inversion principle: consumers depend only on the interface; wiring the transport is the application's job.
 
-The library is framework-agnostic in design and can be used in any .NET application.
+The library targets .NET 8 and does not require the ASP.NET Core shared framework. The file transport uses the .NET Generic Host’s content root.
 
 ---
 
@@ -23,7 +23,7 @@ The library is framework-agnostic in design and can be used in any .NET applicat
 
 ## Features
 
-- **`IEmailSender` interface** — single-method contract: `SendAsync(to, subject, body)`.
+- **`IEmailSender` interface** — `SendAsync(to, subject, body)` with a cancellable overload. Built-in senders never log recipients, subjects, or bodies.
 - **`FileEmailSender`** — writes MIME-compliant `.eml` files for development and testing. No real delivery.
 - **`SmtpEmailSender`** — full SMTP delivery with optional authentication, configurable TLS mode, certificate validation, and timeouts.
 - **`LogOnlyEmailSender`** — fail-safe fallback that logs every send request as a warning without delivering.
@@ -40,11 +40,11 @@ The library is framework-agnostic in design and can be used in any .NET applicat
 ├──────────────────────┤
 │   SendAsync(to,      │
 │     subject, body)   │
-└────────┬─────────────┘
-         │ implements
-    ┌────┼──────────────────────┐
-    │    │                      │
-    ▼    ▼                      ▼
+└──────────────┬───────┘
+               │ implements
+    ┌──────────┼──────────────────────┐
+    │          │                      │
+    ▼          ▼                      ▼
 ┌──────────┐  ┌──────────────┐  ┌────────────────┐
 │ File     │  │ Smtp         │  │ LogOnly        │
 │ .eml     │  │ SMTP+STARTTLS│  │ Logger.Warning │
@@ -77,17 +77,17 @@ Add a `ProjectReference` to your `.csproj`:
 
 ### As a NuGet package (consuming a release)
 
+VereinMail is distributed through [GitHub Packages](https://github.com/Pince-Rioux/VereinMail/packages), not nuget.org. Configure `https://nuget.pkg.github.com/Pince-Rioux/index.json` as a NuGet source and keep nuget.org enabled for dependencies. Authenticate if required: locally, use a GitHub PAT (classic) with `read:packages` via your NuGet credential configuration; in Actions, use a `GITHUB_TOKEN` with `packages: read` and grant the consuming repository access. Do not commit credentials.
+
+Select a published version from the feed, including the prerelease suffix when installing an RC:
+
 ```bash
-dotnet add package VereinMail
+dotnet add package VereinMail --version "$VERSION"
 ```
 
-Or add it to your `.csproj`:
+Set `VERSION` to the exact version listed in GitHub Packages. The release workflow does not publish packages automatically on merge.
 
-```xml
-<ItemGroup>
-  <PackageReference Include="VereinMail" Version="1.0.0-dev" />
-</ItemGroup>
-```
+When upgrading VereinMember, update its direct `MailKit` reference to `4.18.2` or later at the same time. Its `4.17.0` pin otherwise causes a NuGet downgrade error (`NU1605`).
 
 ---
 
@@ -108,9 +108,10 @@ All settings are defined in `MailOptions` and bound from a configuration section
 | `{YourSection}.Smtp` | `Password` | string | `""` | SMTP password (optional) |
 | `{YourSection}.Smtp` | `Security` | string | `"StartTls"` | TLS mode: `StartTls` (required), `StartTlsWhenAvailable`, `SslOnConnect`, or `None` |
 | `{YourSection}.Smtp` | `VerifyServerCertificate` | bool | `true` | Verify the SMTP server certificate. Disable only in isolated development environments. |
-| `{YourSection}.Smtp` | `Timeout` | int | `30` | Connection timeout in seconds |
+| `{YourSection}.Smtp` | `AllowInsecure` | bool | `false` | Explicit opt-in to opportunistic TLS, plaintext, or disabled certificate checks. For isolated development only. |
+| `{YourSection}.Smtp` | `Timeout` | int | `30` | Socket timeout in seconds |
 
-> **TLS default:** `Security` defaults to `StartTls`, so the sender fails instead of silently falling back to plaintext. For legacy servers that only support opportunistic STARTTLS, set `Security` to `StartTlsWhenAvailable`. `SslOnConnect` is for implicit TLS (usually port 465); `None` is intended only for isolated development environments.
+> **Migration:** `StartTls` requires TLS and rejects servers that previously worked with `StartTlsWhenAvailable`. Prefer enabling STARTTLS on the server or using `SslOnConnect` (typically port 465). `StartTlsWhenAvailable`, `None`, and disabling certificate validation now also require `AllowInsecure: true`; use these settings only in isolated development. `FileEmailSender` now takes `IHostEnvironment` instead of `IWebHostEnvironment`; existing registrations by implementation type work with the Generic Host (including ASP.NET Core), but rebuild consumers that directly call the constructor. The three-argument `IEmailSender.SendAsync` remains supported. The cancellation overload cancels built-in transports; for legacy implementations it only checks cancellation before dispatch.
 
 ### Example configuration
 
@@ -127,7 +128,6 @@ All settings are defined in `MailOptions` and bound from a configuration section
       "Server": "smtp.example.com",
       "Port": 587,
       "Username": "smtp-user",
-      "Password": "smtp-password",
       "Security": "StartTls",
       "VerifyServerCertificate": true
     }
@@ -141,34 +141,40 @@ All settings are defined in `MailOptions` and bound from a configuration section
 
 ### Registering the sender (in your application startup)
 
-The library does not auto-register. Your application's startup code picks the transport based on the configuration mode:
+The application selects the transport. In a console app, add `Microsoft.Extensions.Hosting` (8.0 or later, matching your target framework). The following example uses `appsettings.json` or environment variables such as `Mail__Mode` and `Mail__Smtp__Password`:
 
+<!-- quickstart:start -->
 ```csharp
-// Application startup — e.g., your WebAppStartup class
-var mailOptions = configuration.GetValue<MailOptions>("Mail");
-IEmailSender mailSender;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using VereinMail;
 
-switch (mailOptions.Mode.ToLower())
+var builder = Host.CreateApplicationBuilder(args);
+var section = builder.Configuration.GetSection("Mail");
+var mail = section.Get<MailOptions>() ?? new MailOptions();
+builder.Services.Configure<MailOptions>(section);
+
+switch (mail.Mode.Trim().ToUpperInvariant())
 {
-    case "file":
-        mailSender = new FileEmailSender(
-            services.GetRequiredService<IOptions<MailOptions>>(),
-            services.GetRequiredService<IWebHostEnvironment>(),
-            services.GetRequiredService<ILogger<FileEmailSender>>());
+    case "FILE":
+        builder.Services.AddSingleton<IEmailSender, FileEmailSender>();
         break;
-    case "smtp":
-        mailSender = new SmtpEmailSender(
-            services.GetRequiredService<IOptions<MailOptions>>(),
-            services.GetRequiredService<ILogger<SmtpEmailSender>>());
+    case "SMTP":
+        builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
+        break;
+    case "LOG":
+        builder.Services.AddSingleton<IEmailSender, LogOnlyEmailSender>();
         break;
     default:
-        mailSender = new LogOnlyEmailSender(
-            services.GetRequiredService<ILogger<LogOnlyEmailSender>>());
+        throw new InvalidOperationException("Unknown Mail:Mode.");
 }
 
-// Register as singleton for other services to consume
-services.AddSingleton<IEmailSender>(mailSender);
+using var host = builder.Build();
+var sender = host.Services.GetRequiredService<IEmailSender>();
+await sender.SendAsync("recipient@example.com", "Quickstart", "Hello from VereinMail.");
 ```
+<!-- quickstart:end -->
 
 ### Sending an email
 

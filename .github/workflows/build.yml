@@ -14,18 +14,30 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - name: Set up .NET
-        uses: actions/setup-dotnet@v6
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: |
+            8.0.x
+            10.0.x
 
       - name: Restore
-        run: dotnet restore VereinMail.slnx --verbosity minimal
+        run: dotnet restore VereinMail.slnx --verbosity quiet -p:NuGetAuditMode=all '-p:WarningsAsErrors=NU1900%3BNU1901%3BNU1902%3BNU1903%3BNU1904%3BNU1905'
 
       - name: Build
-        run: dotnet build VereinMail.slnx --no-restore --configuration Release --verbosity minimal
+        run: dotnet build VereinMail.slnx --no-restore --configuration Release --verbosity quiet
 
       - name: Test
         run: dotnet test VereinMail.slnx --no-build --configuration Release --logger "console;verbosity=minimal"
+
+      - name: Verify local package and run the README quickstart
+        run: |
+          version=1.0.1-ci
+          package="$RUNNER_TEMP/ci-package/VereinMail.$version.nupkg"
+          dotnet pack src/VereinMail/VereinMail.csproj --no-build -c Release -o "$RUNNER_TEMP/ci-package" -v quiet -p:PackageVersion="$version"
+          python3 scripts/verify-release-package.py "$version" "$package"
+          bash scripts/smoke-package.sh "$package" "$version"

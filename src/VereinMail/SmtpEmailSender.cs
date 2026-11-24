@@ -24,43 +24,57 @@ public class SmtpEmailSender : IEmailSender
         _logger = logger;
     }
 
-    public async Task SendAsync(string to, string subject, string body)
+    public Task SendAsync(string to, string subject, string body) =>
+        SendAsync(to, subject, body, CancellationToken.None);
+
+    public async Task SendAsync(string to, string subject, string body, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var smtp = _options.Smtp;
         if (string.IsNullOrWhiteSpace(smtp.Server))
             throw new InvalidOperationException(
                 "SMTP server is not configured; cannot send email.");
 
-        var message = BuildMessage(to, subject, body);
-
-        var timeoutMs = smtp.Timeout > 0 ? smtp.Timeout * 1000 : 30_000;
-        using var client = new SmtpClient { Timeout = timeoutMs };
-
-        // Only disable certificate validation if explicitly configured (insecure)
-        if (!smtp.VerifyServerCertificate)
-        {
-            _logger.LogWarning(
-                "SMTP server certificate validation is disabled. Use only in isolated development environments.");
-            client.ServerCertificateValidationCallback = (_, _, _, _) => true;
-        }
+        if (smtp.Port is < 1 or > 65535)
+            throw new InvalidOperationException("SMTP port must be between 1 and 65535.");
+        if (smtp.Timeout <= 0 || smtp.Timeout > int.MaxValue / 1000)
+            throw new InvalidOperationException("SMTP timeout must be positive and representable in milliseconds.");
 
         var secureSocketOptions = smtp.Security switch
         {
+            SmtpSecurityMode.StartTls => SecureSocketOptions.StartTls,
             SmtpSecurityMode.StartTlsWhenAvailable => SecureSocketOptions.StartTlsWhenAvailable,
             SmtpSecurityMode.SslOnConnect => SecureSocketOptions.SslOnConnect,
             SmtpSecurityMode.None => SecureSocketOptions.None,
-            _ => SecureSocketOptions.StartTls
+            _ => throw new InvalidOperationException("Unknown SMTP security mode.")
         };
+        var insecure = !smtp.VerifyServerCertificate || smtp.Security is SmtpSecurityMode.None or SmtpSecurityMode.StartTlsWhenAvailable;
+        if (insecure && !smtp.AllowInsecure)
+            throw new InvalidOperationException("Insecure SMTP settings require AllowInsecure and are for isolated development only.");
+        if (insecure)
+            _logger.LogWarning("Insecure SMTP settings are enabled. Use only in isolated development environments.");
 
-        await client.ConnectAsync(smtp.Server, smtp.Port, secureSocketOptions);
+        var message = BuildMessage(to, subject, body);
+        using var client = new SmtpClient { Timeout = smtp.Timeout * 1000 };
+        if (!smtp.VerifyServerCertificate)
+            client.ServerCertificateValidationCallback = (_, _, _, _) => true;
+
+        await client.ConnectAsync(smtp.Server, smtp.Port, secureSocketOptions, cancellationToken);
         if (!string.IsNullOrWhiteSpace(smtp.Username))
-            await client.AuthenticateAsync(smtp.Username, smtp.Password);
+            await client.AuthenticateAsync(smtp.Username, smtp.Password, cancellationToken);
 
-        await client.SendAsync(message);
-        await client.DisconnectAsync(true);
+        await client.SendAsync(message, cancellationToken);
+        try
+        {
+            await client.DisconnectAsync(true, cancellationToken);
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or System.IO.IOException or MailKit.ProtocolException)
+        {
+            // DATA has already been accepted. A failed QUIT must not cause a duplicate on retry.
+            _logger.LogDebug("SMTP session did not close cleanly after the message was accepted.");
+        }
 
-        _logger.LogInformation(
-            "Mail sent via SMTP to {To} (subject {Subject})", to, subject);
+        _logger.LogInformation("Mail accepted by the SMTP server.");
     }
 
     private MimeMessage BuildMessage(string to, string subject, string body)

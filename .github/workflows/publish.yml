@@ -4,37 +4,84 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Package version to publish"
-        required: false
+        description: "SemVer without build metadata (e.g. 1.0.1-rc.1 or 1.0.1)"
+        required: true
         type: string
 
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-nuget
+  cancel-in-progress: false
+
 jobs:
-  publish:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
+  verify:
+    runs-on: ubuntu-24.04
+    env:
+      PKG_VERSION: ${{ inputs.version }}
+    outputs:
+      package_sha256: ${{ steps.package.outputs.sha256 }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - name: Require main branch
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo '::error::Release packages can only be published from main.'
+          exit 1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Validate version
+        run: python3 scripts/verify-release-package.py "$PKG_VERSION"
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Restore and audit
+        run: dotnet restore VereinMail.slnx --verbosity quiet -p:NuGetAuditMode=all '-p:WarningsAsErrors=NU1900%3BNU1901%3BNU1902%3BNU1903%3BNU1904%3BNU1905'
+      - name: Build and test
+        run: |
+          dotnet build VereinMail.slnx --no-restore -c Release -v quiet -p:PackageVersion="$PKG_VERSION"
+          dotnet test VereinMail.slnx --no-build -c Release --logger 'console;verbosity=minimal'
+      - name: Pack, verify and smoke-test the exact candidate
+        id: package
+        run: |
+          dotnet pack src/VereinMail/VereinMail.csproj --no-build -c Release -o "$RUNNER_TEMP/release" -v quiet -p:PackageVersion="$PKG_VERSION"
+          package="$RUNNER_TEMP/release/VereinMail.$PKG_VERSION.nupkg"
+          python3 scripts/verify-release-package.py "$PKG_VERSION" "$package"
+          bash scripts/smoke-package.sh "$package" "$PKG_VERSION"
+          digest=$(sha256sum "$package")
+          echo "sha256=${digest%% *}" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: verified-nuget-package
+          path: ${{ runner.temp }}/release/VereinMail.${{ inputs.version }}.nupkg
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-24.04
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
         with:
           dotnet-version: 10.0.x
-
-      - name: Build package
-        run: |
-          dotnet restore VereinMail.slnx --verbosity minimal
-          dotnet build VereinMail.slnx --no-restore --configuration Release --verbosity minimal
-          dotnet pack src/VereinMail/VereinMail.csproj --no-build --configuration Release --verbosity minimal
-
-      - name: Publish to GitHub Packages
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: verified-nuget-package
+          path: ${{ runner.temp }}/release
+      - name: Verify digest and publish to GitHub Packages
         env:
-          GH_PAT: ${{ secrets.GH_PAT }}
+          PKG_VERSION: ${{ inputs.version }}
+          EXPECTED_DIGEST: ${{ needs.verify.outputs.package_sha256 }}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          NUGET_AUTH_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
-          SRC="https://nuget.pkg.github.com/Pince-Rioux"
-          nupkg=$(find src -name '*.nupkg' -print -quit)
-          [ -n "$nupkg" ] || { echo "::error::no nupkg"; exit 1; }
-          echo "package: $nupkg"
-          dotnet nuget push "$nupkg" \
-            -s "$SRC" \
-            -k "$GH_PAT" \
-            --skip-duplicate
+          package="$RUNNER_TEMP/release/VereinMail.$PKG_VERSION.nupkg"
+          printf '%s  %s\n' "$EXPECTED_DIGEST" "$package" | sha256sum --check --strict
+          dotnet nuget push "$package" \
+            --source "https://nuget.pkg.github.com/$REPOSITORY_OWNER/index.json" \
+            --api-key "$NUGET_AUTH_TOKEN"

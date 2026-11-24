@@ -1,6 +1,6 @@
 namespace VereinMail;
 
-using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
@@ -17,12 +17,12 @@ using System.Threading.Tasks;
 public class FileEmailSender : IEmailSender
 {
     private readonly MailOptions _options;
-    private readonly IWebHostEnvironment _environment;
+    private readonly IHostEnvironment _environment;
     private readonly ILogger<FileEmailSender> _logger;
 
     public FileEmailSender(
         IOptions<MailOptions> options,
-        IWebHostEnvironment environment,
+        IHostEnvironment environment,
         ILogger<FileEmailSender> logger)
     {
         _options = options.Value;
@@ -30,19 +30,32 @@ public class FileEmailSender : IEmailSender
         _logger = logger;
     }
 
-    public async Task SendAsync(string to, string subject, string body)
+    public Task SendAsync(string to, string subject, string body) =>
+        SendAsync(to, subject, body, CancellationToken.None);
+
+    public async Task SendAsync(string to, string subject, string body, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var directory = ResolveDirectory();
         Directory.CreateDirectory(directory);
 
         var message = BuildMessage(to, subject, body);
-        var filePath = Path.Combine(directory, message.MessageId + ".eml");
+        var fileName = $"{Guid.NewGuid():N}.eml";
+        var filePath = Path.Combine(directory, fileName);
+        var pendingPath = filePath + ".tmp";
+        try
+        {
+            await message.WriteToAsync(new FormatOptions { MaxLineLength = 100 }, pendingPath, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            File.Move(pendingPath, filePath);
+        }
+        finally
+        {
+            if (File.Exists(pendingPath))
+                File.Delete(pendingPath);
+        }
 
-        await message.WriteToAsync(new FormatOptions { MaxLineLength = 100 }, filePath);
-
-        _logger.LogInformation(
-            "Mail written to file: {File} (to {To}, subject {Subject})",
-            filePath, to, subject);
+        _logger.LogInformation("Mail written to development maildrop: {FileName}", fileName);
     }
 
     private string ResolveDirectory()
