@@ -85,5 +85,3 @@ jobs:
           dotnet nuget push "$package" \
             --source "https://nuget.pkg.github.com/$REPOSITORY_OWNER/index.json" \
             --api-key "$NUGET_AUTH_TOKEN"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
