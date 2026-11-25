@@ -79,11 +79,22 @@ jobs:
           EXPECTED_DIGEST: ${{ needs.verify.outputs.package_sha256 }}
           REPOSITORY_OWNER: ${{ github.repository_owner }}
           NUGET_AUTH_TOKEN: ${{ github.token }}
+          PACKAGE_PAT: ${{ secrets.GH_PAT }}
         run: |
           package="$RUNNER_TEMP/release/VereinMail.$PKG_VERSION.nupkg"
           printf '%s  %s\n' "$EXPECTED_DIGEST" "$package" | sha256sum --check --strict
-          dotnet nuget push "$package" \
-            --source "https://nuget.pkg.github.com/$REPOSITORY_OWNER/index.json" \
-            --api-key "$NUGET_AUTH_TOKEN"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          push_package() {
+            dotnet nuget push "$package" \
+              --source "https://nuget.pkg.github.com/$REPOSITORY_OWNER/index.json" \
+              --api-key "$1"
+          }
+          if push_package "$NUGET_AUTH_TOKEN"; then
+            exit 0
+          fi
+          if [ -n "${PACKAGE_PAT:-}" ]; then
+            echo "::warning::publish with GITHUB_TOKEN failed; retrying with the GH_PAT secret"
+            push_package "$PACKAGE_PAT"
+          else
+            echo "::error::publish failed and no GH_PAT secret is configured"
+            exit 1
+          fi
