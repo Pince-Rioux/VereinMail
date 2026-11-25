@@ -4,7 +4,7 @@
     <PackageId>VereinMail</PackageId>
     <Title>VereinMail</Title>
     <Version>1.0.1-dev</Version>
-    <Authors>axuno gGmbH and Contributors</Authors>
+    <Authors>Yves Rioux (Pince-Rioux)</Authors>
     <Description>Plain-text email transport for .NET 8 and later, with SMTP, development .eml files, and a log-only fallback.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>email;smtp;mail</PackageTags>
