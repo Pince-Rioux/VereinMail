@@ -54,7 +54,7 @@ The library targets .NET 8 and does not require the ASP.NET Core shared framewor
 
 **Dependencies:**
 
-- **Framework:** `Microsoft.AspNetCore.App` (for `IWebHostEnvironment`, `ILogger`, `IOptions`)
+- **Host integration:** `Microsoft.Extensions.Hosting.Abstractions` (for `IHostEnvironment`), plus options and logging abstractions. The library does not reference the ASP.NET Core shared framework.
 - **MIME & SMTP:** [MailKit](https://www.nuget.org/packages/MailKit) 4.17+ ([GitHub](https://github.com/jstedfast/MailKit) · [MimeKit](http://www.mimekit.net/))
 
 ---
@@ -112,6 +112,30 @@ All settings are defined in `MailOptions` and bound from a configuration section
 | `{YourSection}.Smtp` | `Timeout` | int | `30` | Socket timeout in seconds |
 
 > **Migration:** `StartTls` requires TLS and rejects servers that previously worked with `StartTlsWhenAvailable`. Prefer enabling STARTTLS on the server or using `SslOnConnect` (typically port 465). `StartTlsWhenAvailable`, `None`, and disabling certificate validation now also require `AllowInsecure: true`; use these settings only in isolated development. `FileEmailSender` now takes `IHostEnvironment` instead of `IWebHostEnvironment`; existing registrations by implementation type work with the Generic Host (including ASP.NET Core), but rebuild consumers that directly call the constructor. The three-argument `IEmailSender.SendAsync` remains supported. The cancellation overload cancels built-in transports; for legacy implementations it only checks cancellation before dispatch.
+
+### Production and security checklist
+
+- Keep `Security` at its default `StartTls` or choose `SslOnConnect`; keep `VerifyServerCertificate` enabled. Do not set `AllowInsecure` in production.
+- `AllowInsecure` is an explicit opt-in for isolated development, **not** an environment detection. `SmtpEmailSender` does not read `IHostEnvironment.EnvironmentName`: the application and its deployment configuration must enforce that development-only settings cannot reach production.
+- Before each deployment, review the effective mail configuration for `AllowInsecure: true`, `VerifyServerCertificate: false`, `Security: None`, or `Security: StartTlsWhenAvailable`. The library logs a warning when these combinations are used; treat that warning as a deployment error.
+
+### Recipient addresses
+
+The transports pass `to` to MimeKit's single-`MailboxAddress` parser. Supply one address in the usual `user@example.com` form, or with an optional display name such as `Member <user@example.com>`. Address lists and group syntax are rejected with a `ParseException`; this is a single-recipient API.
+
+The parser deliberately accepts some local or non-Internet address forms, for example `not-an-address`. It does not check domain policy, DNS, mailbox existence, consent, or deliverability. Applications must validate the addresses they collect and apply their own allow/deny rules where required. Invalid input is reported as a parser exception, not as a failed-delivery status.
+
+### Delivery outcome, cancellation, and retries
+
+SMTP is not a transaction with an idempotent `SendAsync` operation. A timeout, cancellation, or lost connection while the client awaits the final DATA response can occur **after the server has accepted the message**. The library cannot reconstruct whether the server saved or forwarded it.
+
+- Do not blindly retry `OperationCanceledException`, an `IOException`, or an SMTP protocol error from an in-flight send. These failures leave the outcome unknown and an automatic retry can duplicate the message.
+- A server reply rejecting a recipient or the message is a different outcome: no accepted delivery occurred for that transaction. Inspect the original SMTP exception rather than treating every exception alike.
+- Cancellation before dispatch does not send anything. The three-argument legacy interface fallback only checks cancellation before dispatch; it cannot stop an implementation's in-flight operation.
+- A cancelled or failed `QUIT` **after** a successful DATA response is deliberately ignored: the message was already accepted, and that cleanup failure is not reported as a send failure.
+- VereinMail deliberately does not queue or persist messages. The caller owns the retry policy and operational reconciliation. If an application must retry automatically, it needs a durable outbox and a recipient- or service-specific idempotency strategy; a message ID alone cannot guarantee SMTP deduplication.
+
+These are inherent limits of SMTP. There is no reliable boolean "not delivered" result after an uncertain connection failure.
 
 ### Example configuration
 
@@ -175,6 +199,8 @@ var sender = host.Services.GetRequiredService<IEmailSender>();
 await sender.SendAsync("recipient@example.com", "Quickstart", "Hello from VereinMail.");
 ```
 <!-- quickstart:end -->
+
+The manual switch above is the central registration point. If applications duplicate this wiring, a small `AddVereinMail` extension would be convenience-only; it should preserve this transport selection and is not required for ASP.NET Core integration.
 
 ### Sending an email
 

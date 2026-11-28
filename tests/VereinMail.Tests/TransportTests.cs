@@ -145,4 +145,46 @@ public class TransportTests
             return Task.CompletedTask;
         }
     }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("to@example.com, second@example.com")]
+    [InlineData("Group: to@example.com;")]
+    public async Task FileSender_RejectsNonSingleAddressSyntax(string recipient)
+    {
+        var root = Directory.CreateTempSubdirectory();
+        try
+        {
+            var sender = new FileEmailSender(Options.Create(MailOptionsForTest()),
+                new TestEnvironment { ContentRootPath = root.FullName }, NullLogger<FileEmailSender>.Instance);
+            await Assert.ThrowsAsync<MimeKit.ParseException>(
+                () => sender.SendAsync(recipient, "Subject", "Body"));
+            Assert.Empty(Directory.GetFiles(root.FullName));
+        }
+        finally
+        {
+            root.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task FileSender_PreservesSingleMailboxDisplayName()
+    {
+        var root = Directory.CreateTempSubdirectory();
+        try
+        {
+            var sender = new FileEmailSender(Options.Create(MailOptionsForTest()),
+                new TestEnvironment { ContentRootPath = root.FullName }, NullLogger<FileEmailSender>.Instance);
+            await sender.SendAsync("Member <member@example.com>", "Subject", "Body");
+            var files = Directory.GetFiles(Path.Combine(root.FullName, "maildrop"));
+            var message = await MimeMessage.LoadAsync(Assert.Single(files));
+            var address = Assert.Single(message.To.Mailboxes);
+            Assert.Equal("Member", address.Name);
+            Assert.Equal("member@example.com", address.Address);
+        }
+        finally
+        {
+            root.Delete(recursive: true);
+        }
+    }
 }
